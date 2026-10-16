@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d5fd1">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>محاسبه‌گر کلاف ورق فولادی</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--bd:#d5d9df;--ac:#1d5fd1;--calc:#e7f6ec;--calcb:#2e9e5b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--tx:#e8eaed;--mut:#9aa3ae;--bd:#3a4048;--ac:#6ea1ff;--calc:#17301f;--calcb:#4cc17e}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--tx:#e8eaed;--mut:#9aa3ae;--bd:#3a4048;--ac:#6ea1ff;--calc:#17301f;--calcb:#4cc17e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Tahoma,"Vazirmatn",system-ui,sans-serif;padding:16px;max-width:520px;margin-inline:auto}
+h1{font-size:19px;margin:6px 0 4px}
+p.s{color:var(--mut);font-size:13px;margin:0 0 14px;line-height:1.7}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.f{display:flex;flex-direction:column;margin-bottom:12px}
+.f:last-child{margin-bottom:0}
+label{font-size:13px;color:var(--mut);margin-bottom:5px}
+.row{display:flex;gap:8px;align-items:center}
+input{flex:1;min-width:0;font:inherit;font-size:17px;padding:11px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);direction:ltr;text-align:left}
+input:focus{outline:none;border-color:var(--ac)}
+input.c{background:var(--calc);border-color:var(--calcb);font-weight:bold}
+.u{width:42px;font-size:13px;color:var(--mut);text-align:left;direction:ltr}
+button{font:inherit;width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:15px}
+#msg{min-height:20px;font-size:13px;color:#d33;margin:0 2px 10px}
+.h{font-size:12px;color:var(--mut);line-height:1.8}
+</style>
+</head>
+<body>
+<h1>محاسبه‌گر کلاف ورق فولادی</h1>
+<p class="s">هر پارامتری را که می‌دانید وارد کنید؛ مقادیر محاسبه‌شده به‌صورت خودکار و با رنگ سبز نمایش داده می‌شوند.</p>
+<div class="card" id="fields"></div>
+<div id="msg"></div>
+<button id="clr">پاک کردن همه</button>
+<div class="card h" style="margin-top:12px">
+طول (متر) = π × (OD² − ID²) ÷ (۴ × ضخامت × ۱۰۰۰)<br>
+وزن (کیلوگرم) = طول × عرض × ضخامت × چگالی ÷ ۱۰۰۰<br>
+برای محاسبهٔ طول/قطر/ضخامت، سه مورد از چهار پارامتر (ID، OD، ضخامت، طول) کافی است. عرض فقط در وزن اثر دارد. چگالی پیش‌فرض ۷٫۸۵ g/cm³ است.
+</div>
+<script>
+var F=[["id","قطر داخلی (ID)","mm"],["od","قطر خارجی (OD)","mm"],["w","عرض","mm"],["t","ضخامت","mm"],["l","طول","m"],["m","وزن","kg"],["rho","چگالی","g/cm³"]];
+var box=document.getElementById("fields"),el={},user={};
+F.forEach(function(f){
+  var d=document.createElement("div");d.className="f";
+  d.innerHTML='<label>'+f[1]+'</label><div class="row"><input id="'+f[0]+'" inputmode="decimal" autocomplete="off"><span class="u">'+f[2]+'</span></div>';
+  box.appendChild(d);el[f[0]]=d.querySelector("input");
+  el[f[0]].addEventListener("input",function(){user[f[0]]=el[f[0]].value.trim()!=="";run();});
+});
+el.rho.value="7.85";user.rho=true;
+function num(s){
+  s=String(s).replace(/[۰-۹]/g,function(c){return c.charCodeAt(0)-1776}).replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-1632}).replace(/[٫,،]/g,".");
+  var n=parseFloat(s);return isFinite(n)?n:NaN;
+}
+function fmt(x){return String(Math.round(x*1000)/1000);}
+function run(){
+  var v={},msg="",k;
+  for(k in el){
+    if(user[k]){var n=num(el[k].value);if(isNaN(n)||n<=0){v[k]=NaN;}else v[k]=n;}
+    else{el[k].value="";el[k].classList.remove("c");}
+  }
+  for(k in v){if(isNaN(v[k])){document.getElementById("msg").textContent="مقدار «"+k.toUpperCase()+"» باید عددی مثبت باشد.";return;}}
+  var K=4000/Math.PI,ch=true,it=0;
+  function set(n,x){if(!isFinite(x)||x<=0){msg="مقادیر ناسازگارند (مثلاً OD باید بزرگ‌تر از ID باشد).";return;}v[n]=x;el[n].value=fmt(x);el[n].classList.add("c");ch=true;}
+  var P=Math.PI;
+  while(ch&&it++<6&&!msg){
+    ch=false;
+    var u=["id","od","t","l"].filter(function(n){return v[n]===undefined});
+    if(u.length===1){
+      var n=u[0];
+      if(n==="l")set("l",P*(v.od*v.od-v.id*v.id)/(4000*v.t));
+      else if(n==="t")set("t",P*(v.od*v.od-v.id*v.id)/(4000*v.l));
+      else if(n==="od")set("od",Math.sqrt(v.id*v.id+K*v.l*v.t));
+      else set("id",Math.sqrt(v.od*v.od-K*v.l*v.t));
+    }
+    if(msg)break;
+    var u2=["m","l","w","t"].filter(function(n){return v[n]===undefined});
+    if(u2.length===1&&v.rho){
+      var q=u2[0];
+      if(q==="m")set("m",v.l*v.w*v.t*v.rho/1000);
+      else if(q==="l")set("l",1000*v.m/(v.w*v.t*v.rho));
+      else if(q==="w")set("w",1000*v.m/(v.l*v.t*v.rho));
+      else set("t",1000*v.m/(v.l*v.w*v.rho));
+    }
+  }
+  if(!msg&&v.id&&v.od&&v.od<=v.id)msg="قطر خارجی باید بزرگ‌تر از قطر داخلی باشد.";
+  document.getElementById("msg").textContent=msg;
+}
+document.getElementById("clr").onclick=function(){
+  for(var k in el){el[k].value="";el[k].classList.remove("c");user[k]=false;}
+  el.rho.value="7.85";user.rho=true;document.getElementById("msg").textContent="";
+};
+if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+</script>
+</body>
+</html>
